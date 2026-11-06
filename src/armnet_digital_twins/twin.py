@@ -13,9 +13,11 @@ One world: reset, step, get_observation, get_joint_positions, verifier, result()
 Many worlds: reset_worlds, step_worlds, get_observations, get_world_joint_positions, verifiers, result(world=i)."""
 from __future__ import annotations
 
+import atexit
 import itertools
 import math
 import os
+import weakref
 from collections.abc import Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 
@@ -331,6 +333,10 @@ class DigitalTwin:
         (height, width) to resize to."""
         if self._renderer is None:                 # one Renderer per process: several corrupt each other on EGL
             self._renderer = mujoco.Renderer(self.model, *self.image_size)
+            # Renderer.__del__ during interpreter shutdown raises EGL errors. atexit runs hooks last in, first out, so
+            # this one closes the renderer before MuJoCo's own hook (registered with its first context) ends EGL.
+            ref = weakref.ref(self._renderer)
+            atexit.register(lambda: (r := ref()) is not None and r.close())
         rd = self._render_data
         rd.qpos[:] = self._history[world][-1] if qpos is None else qpos
         mujoco.mj_kinematics(self.model, rd)
