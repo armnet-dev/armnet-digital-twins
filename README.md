@@ -1,5 +1,9 @@
 # armnet-digital-twins
 
+[![Open in Spaces](https://huggingface.co/datasets/huggingface/badges/resolve/main/open-in-hf-spaces-sm.svg)](https://huggingface.co/spaces/SalZa2004/armnet-biyam-digital-twin)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
+
 MuJoCo digital twins of [armnet](https://armnet.dev) robot cells. A twin is a calibrated cell (robot, cameras, arm
 controller and room) plus a task: its objects, its scene resets and a verifier that grades each episode. Policies get
 the cell's camera frames and joint states and command the arms as they would on the real cell.
@@ -8,6 +12,16 @@ The first twin is the bimanual YAM cell with `insert_gear_in_gripper`: pick up a
 between the jaws of a printed gripper.
 
 ![The bimanual YAM cell in the twin: the right arm holds the gear over the gripper it goes into](media/scene.jpg)
+
+## Try it in your browser
+
+[YAM Sim Viewer](https://huggingface.co/spaces/SalZa2004/armnet-biyam-digital-twin), a Hugging Face Space built by
+Salvina ([@SalZa2004](https://huggingface.co/SalZa2004)), runs the same cell and task with nothing to install:
+
+- **Replays:** a 3D view of the sim that you can orbit, zoom and scrub, reset by reset. Real evaluation episodes'
+  arm commands drive it, with the real and sim camera videos playing in step below.
+- **Teleop:** the scene runs live in the browser on MuJoCo compiled to WebAssembly, and you move the grippers with
+  on-screen buttons or the keyboard.
 
 ## Install
 
