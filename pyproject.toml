@@ -1,0 +1,49 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "armnet-digital-twins"
+version = "0.1.0"
+description = "MuJoCo digital twins of armnet robot cells: calibrated cell scenes, task resets and verifiers."
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = "Apache-2.0"
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]
+authors = [{ name = "Ville Kuosmanen" }]
+
+dependencies = [
+    "mujoco>=3.3,<4",
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "opencv-python-headless>=4.9",
+    "armnet-core>=0.3.3",
+    "huggingface-hub>=0.30",
+    "pandas>=2.0",
+    "pyarrow>=14",
+    "imageio-ffmpeg>=0.5",
+]
+
+[project.urls]
+Homepage = "https://armnet.dev"
+
+[project.optional-dependencies]
+pi05 = [
+    "lerobot[pi]==0.5.1",
+]
+warp = [
+    "mujoco>=3.17,<4",
+    "mujoco-warp>=3.17,<4",
+]
+
+[dependency-groups]
+dev = [
+    "armnet-digital-twins[pi05,warp]",
+    "pytest>=8",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/armnet_digital_twins"]
+
+[tool.hatch.build.targets.sdist]
+exclude = ["/media"]

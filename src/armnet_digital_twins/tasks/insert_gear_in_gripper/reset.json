@@ -1,0 +1,23 @@
+{
+ "task_slug": "insert_gear_in_gripper",
+ "cell_id": "cell-biyam-01",
+ "seed": 42,
+ "scene_calibration": {
+  "id": "978c7ff2-0149-4031-b139-0d3a918f6bf0",
+  "vertices": [[0.39619791666666665, 0.4790509259259259], [0.37493923611111113, 0.9724768518518518], [0.7293663194444444, 0.9604243827160494], [0.6757899305555556, 0.46781635802469135]],
+  "source_frame_width": 1280,
+  "source_frame_height": 720
+ },
+ "manual_reset_config": {
+  "schema_version": 1,
+  "elements": [
+   {"name": "Gripper and fixture", "type": "bounding_box", "vertical_length": "M", "horizontal_length": "M", "min_edge_distance": "L", "rotation_range_degrees": 180.0},
+   {"name": "Gear", "type": "point", "min_edge_distance": "M", "rotation_range_degrees": 0.0}
+  ]
+ },
+ "objects": {
+  "Gripper and fixture": {"object": "holder", "height": 0.03, "yaw_from_arrow_deg": -90.0},
+  "Gear": {"object": "gear", "height": 0.006}
+ },
+ "staging_offset_xy": [-0.008, -0.014]
+}
