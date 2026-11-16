@@ -157,3 +157,14 @@ def test_overhead_lights_variant(twin):
     assert lit.model.vis.quality.shadowsize == 4096 and lit.model.vis.headlight.diffuse[0] < twin.model.vis.headlight.diffuse[0]
     lit.reset(0)
     assert not lit.unstable and lit.render("top").mean() > 20
+
+
+def test_object_masses_are_task_options(twin):
+    body = lambda m, n: mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, n)
+    assert [round(twin.model.body_mass[body(twin.model, n)], 6) for n in ("gear", "stand", "jaw0", "jaw1")] == [0.002, 0.011, 0.011, 0.011]
+    heavy = DigitalTwin("insert_gear_in_gripper", task_options=dict(gear_mass=0.004, stand_mass=0.022, jaw_mass=0.0165)).model
+    for n, k in (("gear", 2.0), ("stand", 2.0), ("jaw0", 1.5), ("jaw1", 1.5)):
+        a, b = body(twin.model, n), body(heavy, n)
+        assert np.isclose(heavy.body_mass[b], k * twin.model.body_mass[a])
+        assert np.allclose(heavy.body_inertia[b], k * twin.model.body_inertia[a], rtol=1e-3)      # same shape: inertia scales
+        assert np.allclose(heavy.body_ipos[b], twin.model.body_ipos[a])                            # and the centre of mass stays

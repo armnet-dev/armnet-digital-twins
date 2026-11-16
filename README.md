@@ -162,6 +162,18 @@ the same engine. On the CPU, the simulation is bit-for-bit reproducible, whateve
 two runs of the same episodes differ slightly, because the GPU's atomic additions don't run in a fixed order. Use the
 CPU engine where a rerun has to reproduce exactly.
 
+### Task options
+
+A task's physical options are its constructor arguments, passed as `task_options`. For `insert_gear_in_gripper`
+these are frictions of the printed parts, the holder's play and its jaw-slide friction, and the parts' masses:
+
+```python
+twin = DigitalTwin("insert_gear_in_gripper", task_options=dict(gear_mass=0.003, stand_mass=0.015))
+```
+
+The masses default to the weighed prints (gear 2 g, stand and each jaw 11 g). Another mass keeps the part's shape:
+the same centre of mass, with the inertia scaled with the mass.
+
 ## Adding a task
 
 A task is a directory under `src/armnet_digital_twins/tasks/` with:
