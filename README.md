@@ -116,6 +116,18 @@ its own copy. A policy that can serve many worlds at once (for example, with one
 `reset_worlds(seeds)` and `act(worlds, obs, left, right)` instead. See `rollout.py`. For lower-level control,
 `reset_worlds`, `step_worlds`, `get_observations` and `get_world_joint_positions` work on all the worlds together.
 
+### Task options
+
+A task's physical options are its constructor arguments, passed as `task_options`. For `insert_gear_in_gripper`
+these are frictions of the printed parts, the holder's play and its jaw-slide friction, and the parts' masses:
+
+```python
+twin = DigitalTwin("insert_gear_in_gripper", task_options=dict(gear_mass=0.003, stand_mass=0.015))
+```
+
+The masses default to the weighed prints (gear 2 g, stand and each jaw 11 g). Another mass keeps the part's shape:
+the same centre of mass, with the inertia scaled with the mass.
+
 ### Cell variants
 
 A cell can describe optional configurations of itself in its `cell.json` under `"variants"`. A twin applies them when
