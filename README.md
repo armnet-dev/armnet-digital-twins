@@ -174,6 +174,23 @@ the same engine. On the CPU, the simulation is bit-for-bit reproducible, whateve
 two runs of the same episodes differ slightly, because the GPU's atomic additions don't run in a fixed order. Use the
 CPU engine where a rerun has to reproduce exactly.
 
+### Per-world physics (domain randomisation)
+
+The engines can give every world its own values of chosen model fields, for example to randomise frictions, masses,
+joint damping or the controller's gains between the worlds of an RL batch. Name the fields when making the twin, then
+pass each episode's values at its reset:
+
+```python
+fields = ("geom_friction", "body_mass", "dof_damping", "actuator_gainprm", "actuator_biasprm")
+twin = DigitalTwin("insert_gear_in_gripper", n_worlds=64, engine="warp", engine_options=dict(world_fields=fields))
+values = {f: np.stack([getattr(twin.model, f)] * 64) for f in fields}     # (n_worlds, *field shape), then randomise
+twin.reset_worlds(model_fields=values)
+```
+
+They are set at the reset, before the scene settles, and stay fixed through the episode: the model never changes
+after t=0. On the GPU they are MuJoCo Warp's batched model fields. On the CPU each world steps its own copy of the
+model. Placing, grading and rendering use the twin's nominal model.
+
 ## Adding a task
 
 A task is a directory under `src/armnet_digital_twins/tasks/` with:

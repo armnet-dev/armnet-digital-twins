@@ -52,14 +52,16 @@ def _accumulate_kernel(wp):
 
 class WarpPhysics:
     """nconmax / njmax / nccdmax: per-world buffer sizes (contacts, constraint rows, CCD contacts); None for MuJoCo
-    Warp's defaults."""
+    Warp's defaults. world_fields: model fields that can differ per world (set_world_fields), as MuJoCo Warp's batched
+    model fields."""
     name = "warp"
 
     def __init__(self, model, n_worlds: int = 1, *, nconmax: int | None = None, njmax: int | None = None,
-                 nccdmax: int | None = None):
+                 nccdmax: int | None = None, world_fields=()):
         wp, mjw = modules()
         self.wp, self.mjw, self.model, self.n_worlds = wp, mjw, model, int(n_worlds)
-        self.m = mjw.put_model(model)
+        self.world_fields = tuple(world_fields)
+        self.m = mjw.put_model(model, batch_sizes={f: self.n_worlds for f in self.world_fields} or None)
         self.m.opt.warn_overflow = 0                  # checked per world through the overflow mask instead
         d0 = mujoco.MjData(model)
         mujoco.mj_forward(model, d0)
@@ -80,6 +82,12 @@ class WarpPhysics:
     def restart(self):
         self.d.qvel.zero_()
         self.d.time.zero_()
+
+    def set_world_fields(self, values: dict):
+        """In place, so a captured step graph sees the new values."""
+        from .physics import check_world_fields
+        for f, v in check_world_fields(self.model, self.world_fields, values, self.n_worlds).items():
+            getattr(self.m, f).assign(v.astype(np.float32))
 
     def set_ctrl(self, ctrl):
         self.d.ctrl.assign(np.asarray(ctrl, np.float32).reshape(self.n_worlds, -1))
