@@ -45,12 +45,20 @@ def _merge(base: dict, over: dict) -> dict:
 
 
 class Cell:
-    """A robot cell loaded from cells/<name>/cell.json. `overrides` is merged into that config (nested dicts merge),
+    """A robot cell loaded from cells/<name>/cell.json. `variants` names optional configurations the cell file
+    describes under "variants" (e.g. "lift_spring"), merged in order; `overrides` is merged last (nested dicts merge),
     e.g. Cell(overrides={"controller": {"delay_s": 0.06}})."""
 
-    def __init__(self, name: str = "yam_bimanual", overrides: dict | None = None):
+    def __init__(self, name: str = "yam_bimanual", overrides: dict | None = None, variants=()):
         self.name, self.root = name, CELLS_DIR / name
-        self.config = _merge(json.loads((self.root / "cell.json").read_text()), overrides or {})
+        config = json.loads((self.root / "cell.json").read_text())
+        known = config.pop("variants", {})
+        for v in variants:
+            if v not in known:
+                raise ValueError(f"cell {name!r} has no variant {v!r}: one of {sorted(known)}")
+            config = _merge(config, {k: x for k, x in known[v].items() if k != "description"})
+        self.variants = tuple(variants)
+        self.config = _merge(config, overrides or {})
         c = self.config
         self.table_z = float(c["table"]["z"])
         self.mat_top = self.table_z + float(c["table"]["mat_thickness"])
@@ -270,7 +278,9 @@ class Cell:
 
     def _controller_xml(self, left_base):
         """The cell's controller and arm dynamics: link masses x mass, a payload body at each wrist camera,
-        body gravity compensation (the controller's, scaled by eta like every motor torque), joint friction."""
+        body gravity compensation (the controller's, scaled by eta like every motor torque), joint friction, and an
+        optional passive joint spring per arm joint (controller "spring": stiffness N m/rad, rest angle in the robot's
+        joint frame, deg; e.g. the "lift_spring" variant)."""
         ac = self.config["controller"]
         bodies = {b.get("name"): b for b in left_base.iter("body")}
         for side in SIDES:
@@ -290,6 +300,11 @@ class Cell:
                 jn = next(x for x in left_base.iter("joint") if x.get("name") == f"{side}_joint{j + 1}")
                 jn.set("damping", f"{ac['damp'][j]:.6g}")
                 jn.set("frictionloss", f"{ac['fric'][j]:.6g}")
+                sp = ac.get("spring")
+                if sp and sp["stiffness"][j]:
+                    ref = np.radians(sp["ref_deg"][j]) + self.joint_offsets[side][j]       # robot frame -> sim joint
+                    jn.set("stiffness", f"{sp['stiffness'][j]:.6g}")
+                    jn.set("springref", f"{ref:.6g}")
 
     def _top_camera_xml(self) -> str:
         """The top camera at its calibrated pose, on a telescopic pole standing on the table under the camera body."""

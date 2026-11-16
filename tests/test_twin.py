@@ -132,3 +132,18 @@ def test_render(twin):
     except Exception as e:                               # no OpenGL backend on this machine
         pytest.skip(f"rendering unavailable: {e}")
     assert img.shape == (twin.cell.height, twin.cell.width, 3) and img.dtype == np.uint8
+
+
+def test_lift_spring_is_an_opt_in_cell_variant(twin):
+    lift = [mujoco.mj_name2id(twin.model, mujoco.mjtObj.mjOBJ_JOINT, f"{s}_joint2") for s in ("left", "right")]
+    assert all(twin.model.jnt_stiffness[j] == 0 for j in range(twin.model.njnt)), "the default cell has a joint spring"
+    sprung = DigitalTwin("insert_gear_in_gripper", cell_variants=("lift_spring",))
+    sp = sprung.cell.config["controller"]["spring"]
+    for side, j in zip(("left", "right"), lift):
+        assert sprung.model.jnt_stiffness[j] == sp["stiffness"][1] > 0
+        ref = np.radians(sp["ref_deg"][1]) + sprung.cell.joint_offsets[side][1]
+        assert abs(sprung.model.qpos_spring[sprung.model.jnt_qposadr[j]] - ref) < 1e-5
+    stiff = {i for i in range(sprung.model.njnt) if sprung.model.jnt_stiffness[i] > 0}
+    assert stiff == set(lift), "only the lift joints carry the spring"
+    with pytest.raises(ValueError):
+        DigitalTwin("insert_gear_in_gripper", cell_variants=("no_such_variant",))
