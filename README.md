@@ -124,6 +124,9 @@ The twin runs its physics on one of two engines:
 - `engine="warp"` is [MuJoCo Warp](https://github.com/google-deepmind/mujoco_warp) on a CUDA GPU. It needs the
   `warp` extra.
 
+Both run on MuJoCo 3.17 and 4.0 (MuJoCo Warp 3.17 / 4.0). The two versions don't give bit-identical physics, so
+compare runs on the same version.
+
 The engine only steps the physics. Everything else uses the same MuJoCo model on the host for both engines: building
 the scene, placing objects at a reset, grading with the task's verifier, observations and rendering. Tasks therefore
 work unchanged on both engines. A task can set the per-world contact buffer sizes for the GPU (`Task.warp_buffers`).

@@ -13,7 +13,7 @@ license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]
 authors = [{ name = "Ville Kuosmanen" }]
 
 dependencies = [
-    "mujoco>=3.3,<4",
+    "mujoco>=3.3,<5",
     "numpy>=1.26",
     "scipy>=1.11",
     "opencv-python-headless>=4.9",
@@ -32,8 +32,8 @@ pi05 = [
     "lerobot[pi]==0.5.1",
 ]
 warp = [
-    "mujoco>=3.17,<4",
-    "mujoco-warp>=3.17,<4",
+    "mujoco>=3.17,<5",
+    "mujoco-warp>=3.17,<5",
 ]
 
 [dependency-groups]
