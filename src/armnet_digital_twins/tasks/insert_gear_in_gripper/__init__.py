@@ -33,14 +33,33 @@ HOLDER_POSE = {"stand": [0.0, 0.0, -1.9420931152625686e-07, 0.9999999999998005, 
                "jaw0": [-0.0002036263784216441, -0.021463267410539787, 0.0049980883167455815, 0.7070306622986701,
                         7.734261211374802e-06, -9.831952564929885e-06, 0.7071828917705932]}
 HOLDER_SLIDE = 0.04292573760811399
-# Mass properties of the printed parts (body frames): each part's mesh inertia scaled to its weighed mass, gear 2 g,
-# stand and each jaw 11 g. Their collision geoms carry no mass.
-INERTIAL = {
-    "gear": '<inertial pos="6.60608e-08 6.7165e-20 0.002828" mass="0.002" fullinertia="9.837e-08 9.837e-08 1.854e-07 9.538e-25 -2.219e-13 8.097e-25"/>',
-    "stand": '<inertial pos="-6.30929e-05 -0.000110217 0.0170998" mass="0.011" fullinertia="3.243e-06 4.254e-06 3.229e-06 -1.928e-11 3.049e-09 1.853e-09"/>',
-    "jaw0": '<inertial pos="0.0239114 -0.00222816 0.0408008" mass="0.011" fullinertia="4.917e-06 2.818e-06 3.648e-06 -3.056e-07 1.013e-07 2.993e-07"/>',
-    "jaw1": '<inertial pos="-0.0239114 0.00576116 0.0408007" mass="0.011" fullinertia="4.917e-06 2.818e-06 3.648e-06 -3.056e-07 -1.013e-07 -2.993e-07"/>',
+# Mass properties of the printed parts (body frames): each part's CAD mesh at uniform density, scaled to its weighed
+# mass (gear 2 g, stand and each jaw 11 g): centre of mass (m) and inertia about it (Ixx Iyy Izz Ixy Ixz Iyz, kg m^2).
+# Another mass (the task's *_mass options) keeps the shape: the same centre of mass, the inertia scaled with the mass.
+# Their collision geoms carry no mass.
+PARTS = {
+    "gear": dict(mass=0.002, com=[6.606081721029868e-08, 6.716503038555716e-20, 0.0028279962993539424],
+             inertia=[9.83702517952926e-08, 9.837034983013452e-08, 1.85359978612013e-07, 9.53752305428502e-25, -2.2188759887709536e-13, 8.097411092202672e-25]),
+    "stand": dict(mass=0.011, com=[-6.309286452913936e-05, -0.00011021734686669186, 0.01709983889876962],
+             inertia=[3.242704559975138e-06, 4.2541700132952675e-06, 3.228588557077568e-06, -1.9278851643693803e-11, 3.04870296116178e-09, 1.8531770156958759e-09]),
+    "jaw0": dict(mass=0.011, com=[0.023911374181902822, -0.002228159272843648, 0.040800751604505095],
+             inertia=[4.916682456055363e-06, 2.8177597332683543e-06, 3.6478209055346175e-06, -3.056178860437363e-07, 1.0125281032976717e-07, 2.9926120553892114e-07]),
+    "jaw1": dict(mass=0.011, com=[-0.023911376257224858, 0.005761155402350364, 0.04080074617401956],
+             inertia=[4.916683052881117e-06, 2.8177597620061383e-06, 3.6478201849272063e-06, -3.056176775141845e-07, -1.0125272276117017e-07, -2.9926118010538507e-07]),
 }
+
+
+def _inertial(part, mass=None) -> str:
+    """<inertial> of a part at `mass` (kg; None: its weighed mass)."""
+    p = PARTS[part]
+    m = p["mass"] if mass is None else float(mass)
+    k = m / p["mass"]
+    return (f'<inertial pos="{fmt(p["com"])}" mass="{m:.6g}" fullinertia="{" ".join(f"{v * k:.4g}" for v in p["inertia"])}"/>')
+
+
+INERTIAL = {part: _inertial(part) for part in PARTS}      # at the weighed masses
+
+
 GEAR_CLEAR_STEP, GEAR_CLEAR_MARGIN, GEAR_CLEAR_MAX = 0.002, 0.001, 0.08
 RGBA_JAW, RGBA_STAND, RGBA_GEAR = (0.07, 0.07, 0.07, 1), (0.93, 0.93, 0.93, 1), (0.06, 0.06, 0.06, 1)
 
@@ -57,7 +76,8 @@ class InsertGearInGripper(Task):
       holder_mat_friction   friction of the holder's stand on the mat (None: the mat's)
       holder_play_deg       how far jaw1 can lean outward as a gear is pushed in (0: a rigid pair)
       holder_play_mm        how far jaw1 can move away from jaw0 across the racks
-      jaw_slide_friction    dry friction (N) of jaw1 sliding along the racks"""
+      jaw_slide_friction    dry friction (N) of jaw1 sliding along the racks
+      gear_mass, stand_mass, jaw_mass   kg (None: the weighed prints, 2 / 11 / 11 g); inertia scales with the mass"""
     name = "insert_gear_in_gripper"
     prompt = "Insert a gear into the parallel gripper"
     dataset = "villekuosmanen/insert_gear_in_gripper"
@@ -66,10 +86,12 @@ class InsertGearInGripper(Task):
     warp_buffers = {"nconmax": 450, "njmax": 1200, "nccdmax": 128}
 
     def __init__(self, *, friction=(0.35, 0.005, 0.0001), gear_holder_friction=(0.1, 0.005, 0.0001),
-                 holder_mat_friction=(0.35, 0.005, 0.0001), holder_play_deg=1.5, holder_play_mm=0.0, jaw_slide_friction=0.2):
+                 holder_mat_friction=(0.35, 0.005, 0.0001), holder_play_deg=1.5, holder_play_mm=0.0, jaw_slide_friction=0.2,
+                 gear_mass=None, stand_mass=None, jaw_mass=None):
         self.friction, self.gear_holder_friction = tuple(friction), gear_holder_friction and tuple(gear_holder_friction)
         self.holder_mat_friction = holder_mat_friction and tuple(holder_mat_friction)
         self.holder_play_deg, self.holder_play_mm, self.jaw_slide_friction = holder_play_deg, holder_play_mm, jaw_slide_friction
+        self.masses = {"gear": gear_mass, "stand": stand_mass, "jaw0": jaw_mass, "jaw1": jaw_mass}
 
     # ---------------- scene ----------------
     def scene(self, cell) -> TaskScene:
@@ -83,7 +105,7 @@ class InsertGearInGripper(Task):
                            for p in coll if p.stem.startswith(prefix + "_"))
 
         gear_attr = f' priority="1" friction="{fmt(self.gear_holder_friction)}"' if self.gear_holder_friction else ""
-        gear = (INERTIAL["gear"] + f'<geom class="obj_vis" type="mesh" mesh="gear_vis" rgba="{fmt(RGBA_GEAR)}"/>'
+        gear = (_inertial("gear", self.masses["gear"]) + f'<geom class="obj_vis" type="mesh" mesh="gear_vis" rgba="{fmt(RGBA_GEAR)}"/>'
                 + coll_geoms("gear", RGBA_GEAR, attr=gear_attr))
         # Stand: the printed part's 2 mm slabs, each as boxes. The bottom slab layer stands on the mat as one convex foot
         # (contype 2 keeps those slabs off the mat, which collides through contype 4).
@@ -115,18 +137,18 @@ class InsertGearInGripper(Task):
         bodies = f"""
     <body name="stand" pos="{fmt((0.42, -0.305, 0.0))}" quat="{fmt(_quat_z(0.0))}">
       <freejoint name="stand_free"/>
-      {INERTIAL["stand"]}
+      {_inertial("stand", self.masses["stand"])}
       <geom class="obj_vis" type="mesh" mesh="stand_vis" rgba="{fmt(RGBA_STAND)}"/>
       {stand}
     </body>
     <body name="jaw0" pos="{fmt((0.42, -0.305, 0.0))}" quat="{fmt(_quat_z(1.5707963))}">
       <freejoint name="jaw0_free"/>
-      {INERTIAL["jaw0"]}
+      {_inertial("jaw0", self.masses["jaw0"])}
       <geom class="obj_vis" type="mesh" mesh="jaw0_vis" pos="0 {JAW_DY:.6f} 0" rgba="{fmt(RGBA_JAW)}"/>
       {coll_geoms("jaw0", RGBA_JAW, (0, JAW_DY, 0))}
       <body name="jaw1" pos="0 {-JAW_DY:.6f} 0">
         {jaw1_joints}
-        {INERTIAL["jaw1"]}
+        {_inertial("jaw1", self.masses["jaw1"])}
         <geom class="obj_vis" type="mesh" mesh="jaw1_vis" rgba="{fmt(RGBA_JAW)}"/>
         {coll_geoms("jaw1", RGBA_JAW)}
       </body>
