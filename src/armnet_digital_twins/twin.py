@@ -85,14 +85,15 @@ class DigitalTwin:
     """task: a task name or Task. n_worlds: copies of the scene run in lockstep. engine: "mujoco" (CPU, worlds in
     parallel threads) or "warp" (MuJoCo Warp on the GPU); engine_options go to the engine (physics.py), on top of the
     task's warp_buffers for "warp". task_options / cell_overrides: physical options of the task (its constructor
-    arguments) and overrides merged into the cell's config, both applied when the scene is built. image_size:
+    arguments) and overrides merged into the cell's config, both applied when the scene is built. cell_variants:
+    optional cell configurations from its cell.json "variants" (e.g. ("lift_spring",)), applied before cell_overrides. image_size:
     (height, width) of rendered camera frames, by default the cell cameras' resolution."""
 
     def __init__(self, task: str | Task = "insert_gear_in_gripper", *, n_worlds: int = 1, engine: str = "mujoco",
                  engine_options: dict | None = None, task_options: dict | None = None, cell_overrides: dict | None = None,
-                 image_size: tuple | None = None):
+                 cell_variants=(), image_size: tuple | None = None):
         self.task = make_task(task, **(task_options or {})) if isinstance(task, str) else task
-        self.cell = Cell(self.task.cell, cell_overrides)
+        self.cell = Cell(self.task.cell, cell_overrides, variants=cell_variants)
         self.xml = self.cell.mjcf(self.task.scene(self.cell))
         self.model = mujoco.MjModel.from_xml_string(self.xml)
         self.n_worlds, self.engine = int(n_worlds), engine

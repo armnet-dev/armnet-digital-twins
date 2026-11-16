@@ -116,6 +116,20 @@ its own copy. A policy that can serve many worlds at once (for example, with one
 `reset_worlds(seeds)` and `act(worlds, obs, left, right)` instead. See `rollout.py`. For lower-level control,
 `reset_worlds`, `step_worlds`, `get_observations` and `get_world_joint_positions` work on all the worlds together.
 
+### Cell variants
+
+A cell can describe optional configurations of itself in its `cell.json` under `"variants"`. A twin applies them when
+it builds the scene, before any `cell_overrides`:
+
+```python
+twin = DigitalTwin("insert_gear_in_gripper", cell_variants=("lift_spring",))
+```
+
+The bimanual YAM cell has one variant, `lift_spring`: a passive spring on each arm's shoulder lift joint. Without it,
+the arm model was identified on free-space motion and runs about 1 cm low near the mat. With it, open-loop replays of
+real commands with the finger pads 10-40 mm above the mat put the fingertips within 1.7 mm of the real ones, against
+9.6 mm without it. It is off by default.
+
 ## Physics engines
 
 The twin runs its physics on one of two engines:

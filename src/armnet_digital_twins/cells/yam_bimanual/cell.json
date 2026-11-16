@@ -73,5 +73,11 @@
    "left_wrist": {"pos": "0.00035 0.00022 -0.00028", "fovy": 56.565},
    "right_wrist": {"pos": "0.00034 0.00006 -0.00015", "fovy": 56.581}
   }
+ },
+ "variants": {
+  "lift_spring": {
+   "description": "A passive spring on each arm's shoulder lift joint (j2), fitted where policies reach near the mat: the arm identified on free-space motion ran about 1 cm low there. Open-loop replays of real commands with the finger pads 10-40 mm above the mat: fingertip height error -9.6 mm without it, -1.7 mm with it (2.2 mm higher up, was 0.1 mm). Stiffness in N m/rad, rest angle in the robot's joint frame (deg).",
+   "controller": {"spring": {"stiffness": [0.0, 1.314, 0.0, 0.0, 0.0, 0.0], "ref_deg": [0.0, 33.231, 0.0, 0.0, 0.0, 0.0]}}
+  }
  }
 }
