@@ -33,6 +33,27 @@ GRAVCOMP_GROUP = {"link1": "link1", "link2": "link2", "link3": "link3", "link4":
                   "gripper": "gripper", "tip_left": "gripper", "tip_right": "gripper", "camera": "gripper"}
 
 
+# Scene lighting rigs, by the cell config's "lighting" (default "default"): (<visual> shadow quality + headlight,
+# <worldbody> lights).
+#   default   the calibrated rig: a sun and a fill light, no shadows, and a strong headlight (it sits at the rendering
+#             camera, so the wrist views are lit head-on and show no shadows).
+#   overhead  six shadow-casting ceiling lights in a 2 x 3 grid over the work area (0.5 m apart, 1.6 m up) and a weak
+#             headlight. Each carries a sixth of the direct light, so a far occluder (the upper arm) leaves six faint
+#             offset shadows while all six overlap under the fingers: a dark contact shadow that grows as the gripper
+#             nears the mat, as in the real wrist views. Brightness matched to default (each camera's mean grey within 7
+#             levels). MuJoCo's classic renderer uses at most 7 scene lights.
+LIGHTING = {
+    "default": ('<quality shadowsize="1024"/>\n    <headlight ambient="0.45 0.45 0.45" diffuse="0.5 0.5 0.5" specular="0.1 0.1 0.1"/>',
+                '<light name="sun" pos="0.5 -0.3 2.0" dir="-0.2 0 -1" directional="true" diffuse="0.7 0.7 0.7" specular="0.2 0.2 0.2" '
+                'castshadow="false"/>\n    <light name="fill" pos="-0.5 -0.3 1.5" dir="0.5 0 -1" directional="false" '
+                'diffuse="0.35 0.35 0.35" castshadow="false"/>'),
+    "overhead": ('<quality shadowsize="4096"/>\n    <headlight ambient="0.45 0.45 0.45" diffuse="0.1 0.1 0.1" specular="0 0 0"/>',
+                 "\n    ".join(f'<light name="ceiling_{i}{j}" pos="{x:.2f} {y:.2f} 1.6" dir="0 0 -1" diffuse="0.28 0.28 0.28" '
+                                f'specular="0.03 0.03 0.03" castshadow="true" cutoff="50" exponent="0"/>'
+                                for i, x in enumerate((0.05, 0.55)) for j, y in enumerate((-0.8, -0.3, 0.2)))),
+}
+
+
 def fmt(v) -> str:
     return " ".join(f"{float(x):.6g}" for x in v)
 
@@ -119,11 +140,10 @@ class Cell:
         c, A = self.config, self.root / "assets"
         prio = f' priority="{task_scene.cell_priority}"' if task_scene.cell_priority else ""
         support = f'contype="{task_scene.support_contype}" conaffinity="1"'
-        visual_lights = ('<quality shadowsize="1024"/>\n    <headlight ambient="0.45 0.45 0.45" diffuse="0.5 0.5 0.5" '
-                         'specular="0.1 0.1 0.1"/>')
-        world_lights = ('<light name="sun" pos="0.5 -0.3 2.0" dir="-0.2 0 -1" directional="true" diffuse="0.7 0.7 0.7" '
-                        'specular="0.2 0.2 0.2" castshadow="false"/>\n    <light name="fill" pos="-0.5 -0.3 1.5" '
-                        'dir="0.5 0 -1" directional="false" diffuse="0.35 0.35 0.35" castshadow="false"/>')
+        lighting = c.get("lighting", "default")
+        if lighting not in LIGHTING:
+            raise ValueError(f"unknown lighting {lighting!r}: one of {sorted(LIGHTING)}")
+        visual_lights, world_lights = LIGHTING[lighting]
         meshes = [f'<mesh name="{n}" file="{A / (n + ".stl")}"/>' for n in COLLISION_MESHES]
         meshes += [f'<mesh name="{p.stem}" file="{p}" scale="1 1 1"/>' for p in self._pads()]
         meshes += [f'<mesh name="{p.stem}_vis" file="{p}"/>' for p in sorted((A / "vis").glob("*.stl"))]
