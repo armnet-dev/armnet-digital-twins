@@ -147,3 +147,13 @@ def test_lift_spring_is_an_opt_in_cell_variant(twin):
     assert stiff == set(lift), "only the lift joints carry the spring"
     with pytest.raises(ValueError):
         DigitalTwin("insert_gear_in_gripper", cell_variants=("no_such_variant",))
+
+
+def test_overhead_lights_variant(twin):
+    lit = DigitalTwin("insert_gear_in_gripper", cell_variants=("overhead_lights",))
+    names = lambda m: {mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_LIGHT, i) for i in range(m.nlight)}
+    assert names(twin.model) == {"sun", "fill"} and not twin.model.light_castshadow.any()
+    assert names(lit.model) == {f"ceiling_{i}{j}" for i in range(2) for j in range(3)} and lit.model.light_castshadow.all()
+    assert lit.model.vis.quality.shadowsize == 4096 and lit.model.vis.headlight.diffuse[0] < twin.model.vis.headlight.diffuse[0]
+    lit.reset(0)
+    assert not lit.unstable and lit.render("top").mean() > 20

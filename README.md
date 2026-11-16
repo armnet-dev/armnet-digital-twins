@@ -125,10 +125,14 @@ it builds the scene, before any `cell_overrides`:
 twin = DigitalTwin("insert_gear_in_gripper", cell_variants=("lift_spring",))
 ```
 
-The bimanual YAM cell has one variant, `lift_spring`: a passive spring on each arm's shoulder lift joint. Without it,
+The bimanual YAM cell has two variants. `lift_spring` is a passive spring on each arm's shoulder lift joint. Without it,
 the arm model was identified on free-space motion and runs about 1 cm low near the mat. With it, open-loop replays of
 real commands with the finger pads 10-40 mm above the mat put the fingertips within 1.7 mm of the real ones, against
 9.6 mm without it. It is off by default.
+
+`overhead_lights` swaps the calibrated lighting (a sun, a fill light and a strong headlight, no shadows) for six
+shadow-casting ceiling lights and a weak headlight. The fingers then cast a contact shadow on the mat as they near it,
+as in the real wrist views, at the same mean brightness per camera. It changes rendering only.
 
 ## Physics engines
 

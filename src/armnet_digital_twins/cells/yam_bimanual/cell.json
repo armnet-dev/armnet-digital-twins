@@ -78,6 +78,10 @@
   "lift_spring": {
    "description": "A passive spring on each arm's shoulder lift joint (j2), fitted where policies reach near the mat: the arm identified on free-space motion ran about 1 cm low there. Open-loop replays of real commands with the finger pads 10-40 mm above the mat: fingertip height error -9.6 mm without it, -1.7 mm with it (2.2 mm higher up, was 0.1 mm). Stiffness in N m/rad, rest angle in the robot's joint frame (deg).",
    "controller": {"spring": {"stiffness": [0.0, 1.314, 0.0, 0.0, 0.0, 0.0], "ref_deg": [0.0, 33.231, 0.0, 0.0, 0.0, 0.0]}}
+  },
+  "overhead_lights": {
+   "description": "Six shadow-casting ceiling lights in a 2 x 3 grid over the work area and a weak headlight, instead of the calibrated sun, fill and strong headlight: the fingers cast a contact shadow on the mat as they near it, as in the real wrist views. Same mean brightness per camera within 7 grey levels. Rendering only.",
+   "lighting": "overhead"
   }
  }
 }
