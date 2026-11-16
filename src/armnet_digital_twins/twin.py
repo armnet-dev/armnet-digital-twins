@@ -126,10 +126,14 @@ class DigitalTwin:
 
     # ---------------- reset (before t=0) ----------------
     def reset_worlds(self, reset_indices: Sequence[int] | None = None, *, seed: int | None = None, worlds=None,
-                     arm_states=None, staging: tuple = (0.0, 0.0), settle_steps: int = 1500) -> list[dict]:
+                     arm_states=None, staging: tuple = (0.0, 0.0), settle_steps: int = 1500,
+                     model_fields: dict | None = None) -> list[dict]:
         """Start an episode in each of the first len(reset_indices) worlds (default: reset i in world i, in every
         world); any others stay idle. worlds / arm_states: one per episode, as reset's world and arm_state (None
-        entries take the default). The worlds settle together. Returns what was placed in each."""
+        entries take the default). model_fields: per-world model parameters for this episode, {field: (n_worlds,
+        *shape)}, for fields the engine was made with (engine_options=dict(world_fields=...)): domain randomisation.
+        They are set here, before the settle, and stay fixed until the next reset: the model never changes after t=0.
+        The worlds settle together. Returns what was placed in each."""
         resets = list(range(self.n_worlds)) if reset_indices is None else [int(r) for r in reset_indices]
         n = len(resets)
         if not 0 < n <= self.n_worlds:
@@ -160,6 +164,8 @@ class DigitalTwin:
             placed.append((reset_index, world, reset, info))
         states += [states[0]] * (self.n_worlds - n)                    # idle worlds hold a copy of the first
         p = self.physics
+        if model_fields:
+            p.set_world_fields(model_fields)
         p.load(states)
         p.step(settle_steps, range(n))
         settled = p.ok
