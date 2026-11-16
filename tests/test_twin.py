@@ -134,6 +134,25 @@ def test_render(twin):
     assert img.shape == (twin.cell.height, twin.cell.width, 3) and img.dtype == np.uint8
 
 
+def test_per_world_model_fields():
+    fields = ("dof_damping", "body_mass")
+    twin = DigitalTwin("insert_gear_in_gripper", n_worlds=3, engine_options=dict(world_fields=fields))
+    m = twin.model
+    v = {f: np.stack([getattr(m, f).copy()] * 3) for f in fields}
+    v["dof_damping"][2] *= 3.0
+    twin.reset_worlds([0, 0, 0], model_fields=v)
+    left, right = twin.get_world_joint_positions()
+    for k in range(20):
+        twin.step_worlds(left + 0.2, right - 0.2)
+    q = [twin.world_qpos(i)[-1] for i in range(3)]
+    assert np.array_equal(q[0], q[1])                    # the nominal values change nothing
+    assert np.abs(q[2] - q[0]).max() > 1e-4              # the per-world value does
+    with pytest.raises(ValueError):
+        twin.reset_worlds([0, 0, 0], model_fields={"geom_friction": np.stack([m.geom_friction] * 3)})   # not a world field
+    with pytest.raises(ValueError):
+        twin.reset_worlds([0, 0, 0], model_fields={"dof_damping": m.dof_damping[None]})                # wrong shape
+
+
 def test_lift_spring_is_an_opt_in_cell_variant(twin):
     lift = [mujoco.mj_name2id(twin.model, mujoco.mjtObj.mjOBJ_JOINT, f"{s}_joint2") for s in ("left", "right")]
     assert all(twin.model.jnt_stiffness[j] == 0 for j in range(twin.model.njnt)), "the default cell has a joint spring"

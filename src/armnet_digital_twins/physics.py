@@ -9,6 +9,9 @@ An engine holds n_worlds copies of one model and offers
   step(n, worlds)   n physics steps of the given worlds (default all)
   qpos              (n_worlds, nq) positions, on the host
   ok                (n_worlds,) bool, False from the first step whose state can't be trusted
+  set_world_fields(values)   per-world model parameters, {field: (n_worlds, *shape)}, for the fields named in the
+                    engine's `world_fields` option (e.g. geom_friction, body_mass, dof_damping, actuator_gainprm): domain
+                    randomisation. Before t=0 only: DigitalTwin.reset_worlds(model_fields=...) sets them before the settle.
 
 Engines:
   "mujoco"  CPU MuJoCo: one MjData per world, worlds stepped in parallel threads. Each world steps exactly as it
@@ -18,6 +21,7 @@ Engines:
             physics_warp.WarpPhysics."""
 from __future__ import annotations
 
+import copy
 import os
 from concurrent.futures import ThreadPoolExecutor
 
@@ -40,12 +44,29 @@ def snapshot(d) -> dict:
     return dict(time=float(d.time), **{f: getattr(d, f).copy() for f in STATE_FIELDS})
 
 
+def check_world_fields(model, world_fields, values, n_worlds) -> dict:
+    """values as float64 arrays of shape (n_worlds, *field shape), for fields named in world_fields."""
+    out = {}
+    for f, v in values.items():
+        if f not in world_fields:
+            raise ValueError(f"{f!r} is not a per-world field of this engine (world_fields={tuple(world_fields)})")
+        want = (n_worlds,) + getattr(model, f).shape
+        v = np.asarray(v, np.float64)
+        if v.shape != want:
+            raise ValueError(f"{f}: shape {v.shape}, expected {want}")
+        out[f] = v
+    return out
+
+
 class MujocoPhysics:
-    """threads: worker threads stepping the worlds (default: one per world, up to the CPU count)."""
+    """threads: worker threads stepping the worlds (default: one per world, up to the CPU count). world_fields: model
+    fields that can differ per world (set_world_fields); each world then steps its own copy of the model."""
     name = "mujoco"
 
-    def __init__(self, model, n_worlds: int = 1, *, threads: int | None = None):
+    def __init__(self, model, n_worlds: int = 1, *, threads: int | None = None, world_fields=()):
         self.model, self.n_worlds = model, int(n_worlds)
+        self.world_fields = tuple(world_fields)
+        self.models = [copy.copy(model) for _ in range(self.n_worlds)] if self.world_fields else [model] * self.n_worlds
         self.datas = [mujoco.MjData(model) for _ in range(self.n_worlds)]
         self._warnings = np.zeros(self.n_worlds, int)
         self._ok = np.ones(self.n_worlds, bool)
@@ -67,6 +88,11 @@ class MujocoPhysics:
             d.qvel[:] = 0.0
             d.time = 0.0
 
+    def set_world_fields(self, values: dict):
+        for f, v in check_world_fields(self.model, self.world_fields, values, self.n_worlds).items():
+            for m, x in zip(self.models, v):
+                getattr(m, f)[:] = x
+
     def set_ctrl(self, ctrl):
         for d, c in zip(self.datas, np.asarray(ctrl, np.float64)):
             d.ctrl[:] = c
@@ -77,9 +103,8 @@ class MujocoPhysics:
             return
 
         def run(chunk):                 # mj_step releases the GIL, so the threads step in parallel
-            m = self.model
             for i in chunk:
-                d, w = self.datas[i], self._warnings[i]
+                m, d, w = self.models[i], self.datas[i], self._warnings[i]
                 for _ in range(n):
                     mujoco.mj_step(m, d)
                     if n_unstable(d) != w:
